@@ -34,10 +34,14 @@ jobs:
           java -cp /tmp/pulso-test TestSignal
       - name: Compilar APK Android
         run: gradle --no-daemon :app:assembleDebug
-      - name: Conferir existência e integridade do APK
+      - name: Conferir integridade, API 35 e assinatura do APK
         run: |
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          sha256sum app/build/outputs/apk/debug/app-debug.apk
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          "$SDK/build-tools/35.0.0/aapt" dump badging "$APK" | grep "targetSdkVersion:'35'"
+          "$SDK/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          sha256sum "$APK"
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
