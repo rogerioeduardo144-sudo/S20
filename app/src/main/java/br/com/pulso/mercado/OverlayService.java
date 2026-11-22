@@ -1,4 +1,5 @@
 package br.com.pulso.mercado;
+
 import android.app.*;
 import android.content.*;
 import android.graphics.*;
@@ -12,65 +13,204 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-public class OverlayService extends Service {
- private WindowManager windows;
- private LinearLayout panel;
- private TextView label,details;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+/** Janela deslocável sobre aplicativos, com simulação apenas; nunca executa ordens reais. */
+public final class OverlayService extends Service {
+ private final String[] symbols={"BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT"};
  private final Handler ui=new Handler(Looper.getMainLooper());
  private final ExecutorService io=Executors.newSingleThreadExecutor();
- private final String[] symbols={"BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT"};
- private int index=0,revision=0;private boolean stopped=false;
- private final Runnable poll=new Runnable(){@Override public void run(){
-  if(stopped)return;
-  final int rev=revision;final String symbol=symbols[index];
-  io.submit(()->{
-   String msg;
-   try{MarketClient.Quote q=MarketClient.load(symbol);
-    msg=String.format(Locale.US,"%,.2f USDT · %s\nRSI %.0f · %s",q.price,q.report.bias,q.report.rsi,new SimpleDateFormat("HH:mm:ss",Locale.getDefault()).format(new Date(q.observedAt)));
-   }catch(Exception e){msg="Cotação indisponível · AGUARDAR\nConfira internet e disponibilidade";}
-   final String out=msg;
-   ui.post(()->{if(!stopped&&revision==rev&&details!=null)details.setText(out);});
-  });
-  ui.postDelayed(this,20000);
- }};
+ private final AtomicBoolean pending=new AtomicBoolean(false);
+ private WindowManager windows;
+ private WindowManager.LayoutParams params;
+ private LinearLayout panel;
+ private TextView title,details,account,mode;
+ private android.content.SharedPreferences prefs,uiPrefs;
+ private MarketClient.Quote quote;
+ private double brlRate=Double.NaN;
+ private int index=0,revision=0;
+ private boolean five=false,stopped=false;
+ private final Runnable poll=new Runnable(){
+  @Override public void run(){
+   if(stopped)return;
+   refresh();
+   ui.postDelayed(this,12000L);
+  }
+ };
  private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
- @Override public void onCreate(){super.onCreate();
+ private TextView text(String str,int size,int color){
+  TextView t=new TextView(this);
+  t.setText(str);t.setTextSize(size);t.setTextColor(color);
+  t.setGravity(Gravity.CENTER_VERTICAL);
+  return t;
+ }
+ private GradientDrawable bg(int color,int border,int radius){
+  GradientDrawable d=new GradientDrawable();
+  d.setColor(color);d.setCornerRadius(dp(radius));d.setStroke(dp(1),border);
+  return d;
+ }
+ private TextView touchButton(String str,int color){
+  TextView v=text(str,12,color);
+  v.setGravity(Gravity.CENTER);
+  v.setPadding(dp(5),dp(7),dp(5),dp(7));
+  return v;
+ }
+ private String asset(){return symbols[index];}
+ private String interval(){return five?"5m":"1m";}
+ private void resetQuote(){
+  revision++;quote=null;brlRate=Double.NaN;pending.set(false);
+  details.setText("Consultando mercado...");
+  updateAccount();
+  ui.removeCallbacks(poll);
+  ui.post(poll);
+ }
+ @Override public void onCreate(){
+  super.onCreate();
+  prefs=getSharedPreferences("paper-v1",MODE_PRIVATE);
+  uiPrefs=getSharedPreferences("overlay-ui",MODE_PRIVATE);
   NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
   nm.createNotificationChannel(new NotificationChannel("pulso","PULSO em execução",NotificationManager.IMPORTANCE_LOW));
   Intent open=new Intent(this,MainActivity.class);
   PendingIntent pi=PendingIntent.getActivity(this,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-  Notification n=new Notification.Builder(this,"pulso").setSmallIcon(android.R.drawable.ic_menu_info_details).setContentTitle("PULSO · Janela flutuante")
-   .setContentText("Toque na janela para alternar o ativo").setContentIntent(pi).setOngoing(true).build();
+  Notification n=new Notification.Builder(this,"pulso")
+   .setSmallIcon(android.R.drawable.ic_menu_info_details)
+   .setContentTitle("PULSO · Monitor fictício")
+   .setContentText("Janela flutuante ativa · nenhuma ordem real")
+   .setContentIntent(pi).setOngoing(true).build();
   startForeground(240,n);
-  try{draw();ui.post(poll);}catch(Exception e){stopSelf();}
+  try {draw();ui.post(poll);}
+  catch(Exception e){stopSelf();}
  }
  private void draw(){
-  if(!Settings.canDrawOverlays(this))throw new IllegalStateException("Permissão de janela necessária");
+  if(!Settings.canDrawOverlays(this))throw new IllegalStateException("Permissão de janela ausente");
   windows=(WindowManager)getSystemService(WINDOW_SERVICE);
-  panel=new LinearLayout(this);panel.setGravity(Gravity.CENTER_VERTICAL);panel.setPadding(dp(12),dp(7),dp(5),dp(7));
-  GradientDrawable bg=new GradientDrawable();bg.setColor(Color.rgb(12,29,48));bg.setCornerRadius(dp(18));bg.setStroke(dp(1),Color.rgb(76,118,140));panel.setBackground(bg);
-  LinearLayout texts=new LinearLayout(this);texts.setOrientation(LinearLayout.VERTICAL);
-  label=new TextView(this);label.setText("PULSO · BTC");label.setTextColor(Color.rgb(132,241,202));label.setTextSize(15);label.setTypeface(null,1);
-  details=new TextView(this);details.setText("Consultando mercado...");details.setTextColor(Color.WHITE);details.setTextSize(12);
-  texts.addView(label);texts.addView(details);panel.addView(texts,new LinearLayout.LayoutParams(dp(235),-2));
-  TextView close=new TextView(this);close.setText("×");close.setTextSize(29);close.setTextColor(Color.WHITE);close.setGravity(Gravity.CENTER);panel.addView(close,new LinearLayout.LayoutParams(dp(34),dp(46)));
+  panel=new LinearLayout(this);
+  panel.setOrientation(LinearLayout.VERTICAL);
+  panel.setPadding(dp(9),dp(8),dp(9),dp(8));
+  panel.setBackground(bg(Color.rgb(10,28,48),Color.rgb(65,134,148),16));
+
+  LinearLayout head=new LinearLayout(this);head.setOrientation(LinearLayout.HORIZONTAL);
+  head.setGravity(Gravity.CENTER_VERTICAL);
+  TextView grip=touchButton("⇕  ARRASTE",Color.rgb(132,241,202));
+  grip.setBackground(bg(Color.rgb(25,59,76),Color.rgb(60,128,142),9));
+  head.addView(grip,new LinearLayout.LayoutParams(dp(113),dp(39)));
+
+  title=touchButton("BTC  ▾",Color.WHITE);title.setTextSize(15);
+  head.addView(title,new LinearLayout.LayoutParams(0,dp(39),1));
+  TextView close=touchButton("×",Color.WHITE);close.setTextSize(28);
+  head.addView(close,new LinearLayout.LayoutParams(dp(34),dp(39)));
+  panel.addView(head);
   close.setOnClickListener(v->stopSelf());
-  texts.setOnClickListener(v->{index=(index+1)%symbols.length;revision++;label.setText("PULSO · "+symbols[index].replace("USDT",""));details.setText("Consultando...");ui.removeCallbacks(poll);ui.post(poll);});
-  WindowManager.LayoutParams p=new WindowManager.LayoutParams(-2,-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-   WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,PixelFormat.TRANSLUCENT);
-  p.gravity=Gravity.TOP|Gravity.START;p.x=dp(12);p.y=dp(130);
-  label.setOnTouchListener(new View.OnTouchListener(){int x,y;float dx,dy;boolean dragged;
-   @Override public boolean onTouch(View view,MotionEvent ev){switch(ev.getActionMasked()){
-    case MotionEvent.ACTION_DOWN:x=p.x;y=p.y;dx=ev.getRawX();dy=ev.getRawY();dragged=false;return true;
-    case MotionEvent.ACTION_MOVE:int xx=Math.round(ev.getRawX()-dx),yy=Math.round(ev.getRawY()-dy);if(Math.abs(xx)+Math.abs(yy)>dp(8))dragged=true;
-     if(dragged){p.x=Math.max(0,x+xx);p.y=Math.max(0,y+yy);windows.updateViewLayout(panel,p);}return true;
-    case MotionEvent.ACTION_UP:if(!dragged)texts.performClick();return true;}
+  title.setOnClickListener(v->{
+   index=(index+1)%symbols.length;
+   title.setText(symbols[index].replace("USDT","")+"  ▾");
+   resetQuote();
+  });
+
+  details=text("Conectando ao mercado...",13,Color.WHITE);
+  details.setPadding(dp(5),dp(6),0,dp(6));
+  panel.addView(details);
+  LinearLayout controls=new LinearLayout(this);
+  controls.setOrientation(LinearLayout.HORIZONTAL);
+  controls.setGravity(Gravity.CENTER_VERTICAL);
+  mode=touchButton("RÁPIDO · 1 MIN",Color.rgb(242,208,108));
+  mode.setBackground(bg(Color.rgb(36,47,65),Color.rgb(70,89,107),9));
+  controls.addView(mode,new LinearLayout.LayoutParams(dp(139),dp(34)));
+  TextView buy=touchButton("COMPRA TESTE",Color.rgb(132,241,202));
+  TextView sell=touchButton("VENDA TESTE",Color.rgb(252,185,176));
+  controls.addView(buy,new LinearLayout.LayoutParams(0,dp(34),1));
+  controls.addView(sell,new LinearLayout.LayoutParams(0,dp(34),1));
+  panel.addView(controls);
+  mode.setOnClickListener(v->{
+   five=!five;
+   mode.setText(five?"CONFIRMAR · 5 MIN":"RÁPIDO · 1 MIN");
+   resetQuote();
+  });
+  buy.setOnClickListener(v->simulate(true));
+  sell.setOnClickListener(v->simulate(false));
+  account=text("Carteira fictícia R$ 100,00",11,Color.rgb(182,200,210));
+  account.setPadding(dp(5),dp(6),0,0);
+  panel.addView(account);
+  TextView disclaimer=text("SIMULAÇÃO • NÃO ENVIA ORDENS À BINANCE",9,Color.rgb(175,188,204));
+  disclaimer.setPadding(dp(5),dp(5),0,0);
+  panel.addView(disclaimer);
+
+  params=new WindowManager.LayoutParams(-2,-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+    PixelFormat.TRANSLUCENT);
+  params.gravity=Gravity.TOP|Gravity.START;
+  params.x=uiPrefs.getInt("x",dp(10));params.y=uiPrefs.getInt("y",dp(130));
+  grip.setOnTouchListener(new View.OnTouchListener(){
+   int originalX,originalY;float downX,downY;
+   @Override public boolean onTouch(View view,MotionEvent ev){
+    switch(ev.getActionMasked()){
+     case MotionEvent.ACTION_DOWN:
+      originalX=params.x;originalY=params.y;
+      downX=ev.getRawX();downY=ev.getRawY();
+      return true;
+     case MotionEvent.ACTION_MOVE:
+      int sx=Math.round(ev.getRawX()-downX),sy=Math.round(ev.getRawY()-downY);
+      android.util.DisplayMetrics dm=getResources().getDisplayMetrics();
+      int maxX=Math.max(0,dm.widthPixels-panel.getWidth());
+      int maxY=Math.max(0,dm.heightPixels-panel.getHeight()-dp(20));
+      params.x=Math.max(0,Math.min(maxX,originalX+sx));
+      params.y=Math.max(0,Math.min(maxY,originalY+sy));
+      try{windows.updateViewLayout(panel,params);}catch(Exception ignored){}
+      return true;
+     case MotionEvent.ACTION_UP:
+     case MotionEvent.ACTION_CANCEL:
+      uiPrefs.edit().putInt("x",params.x).putInt("y",params.y).apply();
+      return true;
+    }
     return false;
    }
   });
-  windows.addView(panel,p);
+  windows.addView(panel,params);
+  updateAccount();
  }
- @Override public int onStartCommand(Intent i,int flags,int startId){return START_NOT_STICKY;}
- @Override public void onDestroy(){stopped=true;revision++;ui.removeCallbacks(poll);io.shutdownNow();if(windows!=null&&panel!=null){try{windows.removeView(panel);}catch(Exception ignored){}}super.onDestroy();}
- @Override public IBinder onBind(Intent i){return null;}
+ private void refresh(){
+  if(!pending.compareAndSet(false,true))return;
+  final int currentRevision=revision;
+  final String symbol=asset(),tf=interval();
+  io.submit(()->{
+   MarketClient.Quote result=null;
+   double rate=Double.NaN;
+   String error=null;
+   try{result=MarketClient.load(symbol,tf);}catch(Exception e){error=e.getMessage();}
+   if(result!=null){try{rate=FxClient.brlRate();}catch(Exception ignored){}}
+   final MarketClient.Quote q=result;final double fx=rate;final String err=error;
+   ui.post(()->{
+    pending.set(false);
+    if(stopped||revision!=currentRevision)return;
+    quote=q;brlRate=fx;
+    if(q==null){
+     details.setText("SEM COTAÇÃO · AGUARDAR\n"+(err==null?"Sem dados válidos":err));
+     details.setTextColor(Color.rgb(250,190,174));
+    } else {
+     String timestamp=new SimpleDateFormat("HH:mm:ss",Locale.getDefault()).format(new Date(q.observedAt));
+     details.setText(String.format(Locale.US,"%,.2f USDT · %s\nRSI %.0f · %s · %s",q.price,q.report.bias,q.report.rsi,tf,timestamp));
+     details.setTextColor(q.report.bias.equals("VIÉS COMPRADOR")?Color.rgb(132,241,202):
+       q.report.bias.equals("VIÉS VENDEDOR")?Color.rgb(251,187,177):Color.WHITE);
+    }
+    updateAccount();
+   });
+  });
+ }
+ private void updateAccount(){
+  if(account!=null)account.setText(PaperWallet.summary(prefs,asset(),quote!=null&&Double.isFinite(brlRate)?quote.price*brlRate:Double.NaN));
+ }
+ private void simulate(boolean buy){
+  String result=PaperWallet.trade(prefs,buy,asset(),
+   quote!=null&&Double.isFinite(brlRate)?quote.price*brlRate:Double.NaN,
+   quote!=null?quote.observedAt:0L);
+  android.widget.Toast.makeText(this,result,android.widget.Toast.LENGTH_LONG).show();
+  updateAccount();
+ }
+ @Override public int onStartCommand(Intent i,int flags,int id){return START_NOT_STICKY;}
+ @Override public void onDestroy(){
+  stopped=true;revision++;ui.removeCallbacks(poll);io.shutdownNow();
+  if(windows!=null&&panel!=null)try{windows.removeView(panel);}catch(Exception ignored){}
+  super.onDestroy();
+ }
+ @Override public IBinder onBind(Intent intent){return null;}
 }
