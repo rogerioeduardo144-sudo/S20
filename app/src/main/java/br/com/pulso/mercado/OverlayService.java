@@ -133,6 +133,7 @@ public final class OverlayService extends Service {
   mode.setOnClickListener(v->{
    five=!five;
    mode.setText(five?"CONFIRMAR · 5 MIN":"RÁPIDO · 1 MIN");
+   android.util.Log.i("PULSO_MODE","Intervalo="+interval());
    resetQuote();
   });
   buy.setOnClickListener(v->simulate(true));
@@ -214,6 +215,7 @@ public final class OverlayService extends Service {
   String result=PaperWallet.trade(prefs,buy,asset(),
    quote!=null&&Double.isFinite(brlRate)?quote.price*brlRate:Double.NaN,
    quote!=null?quote.observedAt:0L);
+  android.util.Log.i("PULSO_PAPER",(buy?"COMPRA ":"VENDA ")+asset()+" · simulação");
   android.widget.Toast.makeText(this,result,android.widget.Toast.LENGTH_LONG).show();
   updateAccount();
  }
