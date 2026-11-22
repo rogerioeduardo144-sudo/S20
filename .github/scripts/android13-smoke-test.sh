@@ -52,6 +52,48 @@ echo "Tocando no botão em: $X,$Y"
 adb shell input tap "$X" "$Y"
 sleep 5
 adb shell dumpsys activity services "$PACKAGE" | grep 'OverlayService'
+echo '----- TESTAR ARRASTE DA JANELA -----'
+find_control() {
+  adb shell uiautomator dump /sdcard/pulso-overlay.xml >/dev/null
+  adb shell cat /sdcard/pulso-overlay.xml > /tmp/pulso-overlay.xml
+  python3 - "$1" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+needle=sys.argv[1]
+root=ET.parse('/tmp/pulso-overlay.xml').getroot()
+for node in root.iter('node'):
+    if needle not in node.attrib.get('text',''):
+        continue
+    m=re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',node.attrib.get('bounds',''))
+    if m:
+        x1,y1,x2,y2=map(int,m.groups())
+        print((x1+x2)//2,(y1+y2)//2)
+        break
+PY
+}
+GRIP=$(find_control 'ARRASTE')
+test -n "$GRIP"
+read -r GRIPX GRIPY <<< "$GRIP"
+echo "Alça de arraste: $GRIPX $GRIPY"
+adb shell input swipe "$GRIPX" "$GRIPY" "$GRIPX" "$((GRIPY + 85))" 800
+sleep 2
+GRIP_AFTER=$(find_control 'ARRASTE')
+test -n "$GRIP_AFTER"
+read -r AFTERX AFTERY <<< "$GRIP_AFTER"
+echo "Alça após arrastar: $AFTERX $AFTERY"
+if [ $((AFTERY-GRIPY)) -lt 25 ]; then
+  echo 'FALHA: janela não deslocou no arraste'
+  exit 1
+fi
+echo '----- TESTAR MODO RÁPIDO 1m/5m -----'
+MODE=$(find_control 'RÁPIDO')
+test -n "$MODE"
+read -r MODEX MODEY <<< "$MODE"
+adb shell input tap "$MODEX" "$MODEY"
+sleep 2
+test -n "$(find_control 'CONFIRMAR')"
+test -n "$(find_control 'COMPRA TESTE')"
+test -n "$(find_control 'VENDA TESTE')"
+echo 'PASSOU: janela move, alterna 1m/5m e exibe controles de compra/venda fictícia'
 echo '----- VERIFICAR CRASHES -----'
 adb logcat -d -v brief -s AndroidRuntime:E > /tmp/pulso_runtime.txt || true
 tail -n 50 /tmp/pulso_runtime.txt
@@ -59,4 +101,4 @@ if grep -q "Process: $PACKAGE" /tmp/pulso_runtime.txt; then
   echo 'FALHA: Crash detectado'
   exit 1
 fi
-echo 'APROVADO: APK instalado, aberto e janela flutuante iniciada no Android 13.'
+echo 'APROVADO: APK instalado, aberto, janela arrastada e modo rápido 1m/5m no Android 13.'
