@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PACKAGE="br.com.pulso.mercado.v26"
+PACKAGE="br.com.pulso.mercado.v27"
 APK="app/build/outputs/apk/debug/app-debug.apk"
 echo '----- ANDROID -----'
 adb shell getprop ro.build.version.release
