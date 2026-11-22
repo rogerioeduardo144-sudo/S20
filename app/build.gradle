@@ -3,11 +3,11 @@ android {
     namespace 'br.com.pulso.mercado'
     compileSdk 35
     defaultConfig {
-        applicationId 'br.com.pulso.mercado'
+        applicationId 'br.com.pulso.mercado.v26'
         minSdk 26
         targetSdk 35
-        versionCode 7
-        versionName '2.5-testes'
+        versionCode 8
+        versionName '2.6-testes'
     }
     buildTypes { release { minifyEnabled false } }
     compileOptions {
