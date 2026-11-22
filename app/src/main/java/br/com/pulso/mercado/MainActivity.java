@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
   ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
   LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(20),dp(20),dp(20),dp(20));root.setBackgroundColor(Color.rgb(10,20,35));
   sc.addView(root);setContentView(sc);
-  TextView h=label("PULSO · Mercado",27,Color.rgb(132,241,202));h.setTypeface(null,1);root.addView(h);
+  TextView h=label("PULSO 2.6 · Mercado",27,Color.rgb(132,241,202));h.setTypeface(null,1);root.addView(h);
   root.addView(label("Dados públicos de mercado · atualização aproximada de 20 segundos",12,Color.LTGRAY));
   root.addView(label("Ativo observado",15,Color.WHITE));
   picker=new Spinner(this);
