@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/validar-apk-emulador.yml'
+      - '.github/scripts/**'
       - 'app/**'
 concurrency:
   group: pulso-emulator-${{ github.ref }}
