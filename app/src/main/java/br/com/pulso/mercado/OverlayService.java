@@ -155,7 +155,9 @@ public final class OverlayService extends Service {
       int maxY=Math.max(0,dm.heightPixels-panel.getHeight()-dp(20));
       params.x=Math.max(0,Math.min(maxX,originalX+sx));
       params.y=Math.max(0,Math.min(maxY,originalY+sy));
-      try{windows.updateViewLayout(panel,params);}catch(Exception ignored){}
+      try{windows.updateViewLayout(panel,params);
+       android.util.Log.i("PULSO_DRAG","Moved x="+params.x+" y="+params.y);
+      }catch(Exception e){android.util.Log.w("PULSO_DRAG","Falha ao mover janela",e);}
       return true;
      case MotionEvent.ACTION_UP:
      case MotionEvent.ACTION_CANCEL:
