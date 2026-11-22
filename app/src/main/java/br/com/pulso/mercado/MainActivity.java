@@ -97,12 +97,8 @@ public class MainActivity extends Activity {
  private void save(String key,double value){prefs.edit().putString(key,Double.toString(value)).apply();}
  private void showPaper(){
   if(paperView==null)return;
-  double cash=stored("cash",100),qty=stored("qty",0);String held=prefs.getString("held","");
-  String line="Saldo: "+money(cash);
-  if(qty>0){line+=" · Posição "+held+": "+String.format(Locale.US,"%.8f",qty)+" unidades";
-   if(quote!=null&&Double.isFinite(rate)&&held.equals(selected()))line+=" · Total estimado: "+money(cash+qty*quote.price*rate);
-  }else{line+=" · Sem posição aberta";}
-  paperView.setText(line);
+  double currentPrice=quote!=null&&Double.isFinite(rate)?quote.price*rate:Double.NaN;
+  paperView.setText(PaperWallet.summary(prefs,selected(),currentPrice));
  }
  private void paperTrade(boolean buy){
   String result=PaperWallet.trade(prefs,buy,selected(),
