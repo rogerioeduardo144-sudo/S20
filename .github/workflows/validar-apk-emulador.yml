@@ -43,6 +43,14 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: bash .github/scripts/android13-smoke-test.sh
+      - name: Registrar evidências do teste de arraste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PULSO-Capturas-Teste
+          path: /tmp/pulso-evidencia/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Publicar APK testado
         uses: actions/upload-artifact@v4
         with:
