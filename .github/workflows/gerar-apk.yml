@@ -16,10 +16,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: SDK Android
-        uses: android-actions/setup-android@v3
-      - name: Instalar API 35
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Instalar API 35 usando o SDK do runner
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMGR=$(find "$SDK/cmdline-tools" -name sdkmanager -type f | sort | tail -n 1)
+          test -n "$SDKMGR"
+          yes | "$SDKMGR" --licenses > /dev/null || true
+          "$SDKMGR" 'platforms;android-35' 'build-tools;35.0.0'
       - name: Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
