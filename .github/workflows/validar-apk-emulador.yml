@@ -45,20 +45,20 @@ jobs:
             echo "----- INSTALAR -----"
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             echo "----- VERIFICAR INSTALAÇÃO -----"
-            adb shell pm path br.com.pulso.mercado | grep "package:"
+            adb shell pm path br.com.pulso.mercado.v26 | grep "package:"
             echo "----- INICIAR -----"
-            adb shell am start -W -n br.com.pulso.mercado/.MainActivity
+            adb shell am start -W -n br.com.pulso.mercado.v26/br.com.pulso.mercado.MainActivity
             sleep 8
-            adb shell pidof br.com.pulso.mercado
+            adb shell pidof br.com.pulso.mercado.v26
             echo "----- JANELA FLUTUANTE -----"
-            adb shell appops set br.com.pulso.mercado SYSTEM_ALERT_WINDOW allow
-            adb shell am start-foreground-service -n br.com.pulso.mercado/.OverlayService
+            adb shell appops set br.com.pulso.mercado.v26 SYSTEM_ALERT_WINDOW allow
+            adb shell am start-foreground-service -n br.com.pulso.mercado.v26/br.com.pulso.mercado.OverlayService
             sleep 5
             adb shell dumpsys activity services br.com.pulso.mercado | grep -F "OverlayService"
             echo "----- CRASH LOG -----"
             adb logcat -d -v brief -s AndroidRuntime:E > /tmp/pulso_runtime.txt || true
             cat /tmp/pulso_runtime.txt | tail -n 60
-            if grep -q "Process: br.com.pulso.mercado" /tmp/pulso_runtime.txt; then
+            if grep -q "Process: br.com.pulso.mercado.v26" /tmp/pulso_runtime.txt; then
               echo "ERRO: crash do PULSO identificado"
               exit 1
             fi
