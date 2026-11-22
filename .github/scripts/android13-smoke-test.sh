@@ -61,7 +61,11 @@ import re,sys,xml.etree.ElementTree as ET
 needle=sys.argv[1]
 root=ET.parse('/tmp/pulso-overlay.xml').getroot()
 for node in root.iter('node'):
-    if needle not in node.attrib.get('text',''):
+    content=node.attrib.get('text','')
+    if needle=='ARRASTE':
+        if not content.strip().startswith('⇕'):
+            continue
+    elif needle not in content:
         continue
     m=re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',node.attrib.get('bounds',''))
     if m:
