@@ -73,7 +73,7 @@ jobs:
                     print((x1+x2)//2,(y1+y2)//2)
                     break
             PY
-)
+            )
               if [ -n "$FOUND" ]; then break; fi
               adb shell input swipe 530 1650 530 400 400
               sleep 1
