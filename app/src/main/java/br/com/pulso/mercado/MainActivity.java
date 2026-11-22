@@ -41,8 +41,8 @@ public class MainActivity extends Activity {
   ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
   LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(20),dp(20),dp(20),dp(20));root.setBackgroundColor(Color.rgb(10,20,35));
   sc.addView(root);setContentView(sc);
-  TextView h=label("PULSO 2.6 · Mercado",27,Color.rgb(132,241,202));h.setTypeface(null,1);root.addView(h);
-  root.addView(label("Dados públicos de mercado · atualização aproximada de 20 segundos",12,Color.LTGRAY));
+  TextView h=label("PULSO 2.7 · Mercado",27,Color.rgb(132,241,202));h.setTypeface(null,1);root.addView(h);
+  root.addView(label("Cotações públicas. Na janela: segure ⇕ ARRASTE para mover; alterne entre sinais de 1 e 5 minutos.",12,Color.LTGRAY));
   Button overlay=button("Ativar janela flutuante");root.addView(overlay);overlay.setOnClickListener(v->startOverlay());
   root.addView(label("Ativo observado",15,Color.WHITE));
   picker=new Spinner(this);
@@ -52,13 +52,13 @@ public class MainActivity extends Activity {
   signalView=label("AGUARDAR · Sem análise",20,Color.rgb(242,208,108));root.addView(signalView);
   statusView=label("Conectando à fonte pública...",13,Color.LTGRAY);root.addView(statusView);
   Button refreshBtn=button("Atualizar agora");root.addView(refreshBtn);refreshBtn.setOnClickListener(v->refresh());
-  root.addView(label("Carteira de demonstração · R$ 100 fictícios",18,Color.rgb(132,241,202)));
+  root.addView(label("Carteira de demonstração · R$ 100 fictícios · custos 0,15% por lado",18,Color.rgb(132,241,202)));
   paperView=label("Saldo fictício R$ 100,00",17,Color.WHITE);root.addView(paperView);
   Button buy=button("COMPRAR — SOMENTE SIMULAÇÃO");root.addView(buy);buy.setOnClickListener(v->paperTrade(true));
   Button sell=button("VENDER — SOMENTE SIMULAÇÃO");root.addView(sell);sell.setOnClickListener(v->paperTrade(false));
   Button reset=button("Reiniciar simulação");root.addView(reset);reset.setOnClickListener(v->{prefs.edit().clear().apply();showPaper();});
 
-  root.addView(label("Os sinais são experimentais e podem falhar. Não existe garantia de rentabilidade. Nenhuma ordem real é enviada. Simulação sem tarifas ou impostos. Se faltarem dados, a análise fica indisponível.",12,Color.LTGRAY));
+  root.addView(label("Comprar/vender na janela são apenas TESTES. Custos de negociação simulados: 0,10% tarifa + 0,05% deslizamento por lado; impostos não incluídos. Sinais experimentais, sem garantia de lucro. Nunca envia ordens à Binance.",12,Color.LTGRAY));
   picker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
    @Override public void onItemSelected(AdapterView<?> parent,View view,int pos,long id){quote=null;rate=Double.NaN;priceView.setText("Consultando...");signalView.setText("AGUARDAR");refresh();showPaper();}
    @Override public void onNothingSelected(AdapterView<?> p){}
@@ -105,13 +105,13 @@ public class MainActivity extends Activity {
   paperView.setText(line);
  }
  private void paperTrade(boolean buy){
-  if(quote==null||!Double.isFinite(rate)||rate<=0){toast("Sem cotação atual e conversão BRL; simulação bloqueada");return;}
-  double p=quote.price*rate,cash=stored("cash",100),qty=stored("qty",0);
-  String held=prefs.getString("held","");
-  if(buy){if(qty>0||cash<=0){toast("Encerre a posição atual antes de comprar novamente");return;}save("qty",cash/p);save("cash",0);prefs.edit().putString("held",selected()).apply();}
-  else{if(qty<=0||!held.equals(selected())){toast("Selecione o ativo da posição aberta para vender");return;}save("cash",cash+qty*p);save("qty",0);prefs.edit().remove("held").apply();}
-  showPaper();toast("Operação fictícia registrada. Nenhuma ordem foi enviada.");
+  String result=PaperWallet.trade(prefs,buy,selected(),
+   quote!=null&&Double.isFinite(rate)?quote.price*rate:Double.NaN,
+   quote!=null?quote.observedAt:0L);
+  toast(result);
+  showPaper();
  }
+
  private void toast(String s){android.widget.Toast.makeText(this,s,android.widget.Toast.LENGTH_LONG).show();}
  private void startOverlay(){
   if(!Settings.canDrawOverlays(this)){toast("Autorize Aparecer sobre outros aplicativos e retorne ao PULSO");startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName())));return;}
