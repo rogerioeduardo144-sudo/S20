@@ -111,15 +111,24 @@ public final class OverlayService extends Service {
   details.setPadding(dp(5),dp(6),0,dp(6));
   panel.addView(details);
   LinearLayout controls=new LinearLayout(this);
-  controls.setOrientation(LinearLayout.HORIZONTAL);
-  controls.setGravity(Gravity.CENTER_VERTICAL);
+  controls.setOrientation(LinearLayout.VERTICAL);
+  controls.setPadding(0,dp(2),0,0);
   mode=touchButton("RÁPIDO · 1 MIN",Color.rgb(242,208,108));
   mode.setBackground(bg(Color.rgb(36,47,65),Color.rgb(70,89,107),9));
-  controls.addView(mode,new LinearLayout.LayoutParams(dp(139),dp(34)));
+  controls.addView(mode,new LinearLayout.LayoutParams(-1,dp(34)));
+  LinearLayout actions=new LinearLayout(this);
+  actions.setOrientation(LinearLayout.HORIZONTAL);
   TextView buy=touchButton("COMPRA TESTE",Color.rgb(132,241,202));
+  buy.setBackground(bg(Color.rgb(21,66,61),Color.rgb(75,135,118),9));
   TextView sell=touchButton("VENDA TESTE",Color.rgb(252,185,176));
-  controls.addView(buy,new LinearLayout.LayoutParams(0,dp(34),1));
-  controls.addView(sell,new LinearLayout.LayoutParams(0,dp(34),1));
+  sell.setBackground(bg(Color.rgb(75,38,50),Color.rgb(142,86,96),9));
+  LinearLayout.LayoutParams buyLp=new LinearLayout.LayoutParams(0,dp(38),1);
+  LinearLayout.LayoutParams sellLp=new LinearLayout.LayoutParams(0,dp(38),1);
+  buyLp.setMargins(0,dp(4),dp(3),0);
+  sellLp.setMargins(dp(3),dp(4),0,0);
+  actions.addView(buy,buyLp);
+  actions.addView(sell,sellLp);
+  controls.addView(actions);
   panel.addView(controls);
   mode.setOnClickListener(v->{
    five=!five;
@@ -135,7 +144,7 @@ public final class OverlayService extends Service {
   disclaimer.setPadding(dp(5),dp(5),0,0);
   panel.addView(disclaimer);
 
-  params=new WindowManager.LayoutParams(-2,-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+  params=new WindowManager.LayoutParams(dp(270),-2,WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
     PixelFormat.TRANSLUCENT);
   params.gravity=Gravity.TOP|Gravity.START;
