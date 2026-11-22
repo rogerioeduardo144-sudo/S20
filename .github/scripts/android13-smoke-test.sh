@@ -57,7 +57,7 @@ mkdir -p /tmp/pulso-evidencia
 adb shell screencap -p /sdcard/pulso-before.png
 adb pull /sdcard/pulso-before.png /tmp/pulso-evidencia/antes.png >/dev/null
 adb logcat -c
-adb shell input swipe 65 174 65 278 850
+adb shell input swipe 65 174 110 278 850
 sleep 3
 adb shell screencap -p /sdcard/pulso-after.png
 adb pull /sdcard/pulso-after.png /tmp/pulso-evidencia/depois.png >/dev/null
@@ -68,6 +68,22 @@ if ! grep -q 'Moved x=' /tmp/pulso-evidencia/arraste.log; then
   exit 1
 fi
 echo 'PASSOU: eventos de arraste recebidos na janela'
+echo '----- TESTAR CONTROLES RÁPIDOS -----'
+adb logcat -c
+adb shell input tap 150 371
+sleep 2
+adb shell input tap 120 412
+sleep 2
+adb logcat -d -s PULSO_MODE:I PULSO_PAPER:I > /tmp/pulso-evidencia/controles.log
+cat /tmp/pulso-evidencia/controles.log | tail -n 12
+if ! grep -q 'Intervalo=5m' /tmp/pulso-evidencia/controles.log; then
+ echo 'AVISO: interação do botão 5m não confirmada nessas coordenadas do emulador'
+fi
+if ! grep -q 'COMPRA BTCUSDT' /tmp/pulso-evidencia/controles.log; then
+ echo 'AVISO: interação de compra fictícia não confirmada nessas coordenadas do emulador'
+fi
+adb shell screencap -p /sdcard/pulso-modo.png
+adb pull /sdcard/pulso-modo.png /tmp/pulso-evidencia/modo.png >/dev/null
 echo '----- VERIFICAR CRASHES -----'
 adb logcat -d -v brief -s AndroidRuntime:E > /tmp/pulso_runtime.txt || true
 tail -n 50 /tmp/pulso_runtime.txt
