@@ -43,6 +43,7 @@ public class MainActivity extends Activity {
   sc.addView(root);setContentView(sc);
   TextView h=label("PULSO 2.6 · Mercado",27,Color.rgb(132,241,202));h.setTypeface(null,1);root.addView(h);
   root.addView(label("Dados públicos de mercado · atualização aproximada de 20 segundos",12,Color.LTGRAY));
+  Button overlay=button("Ativar janela flutuante");root.addView(overlay);overlay.setOnClickListener(v->startOverlay());
   root.addView(label("Ativo observado",15,Color.WHITE));
   picker=new Spinner(this);
   ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Bitcoin · BTC/USDT","Ethereum · ETH/USDT","Solana · SOL/USDT","BNB · BNB/USDT"});
@@ -56,7 +57,7 @@ public class MainActivity extends Activity {
   Button buy=button("COMPRAR — SOMENTE SIMULAÇÃO");root.addView(buy);buy.setOnClickListener(v->paperTrade(true));
   Button sell=button("VENDER — SOMENTE SIMULAÇÃO");root.addView(sell);sell.setOnClickListener(v->paperTrade(false));
   Button reset=button("Reiniciar simulação");root.addView(reset);reset.setOnClickListener(v->{prefs.edit().clear().apply();showPaper();});
-  Button overlay=button("Ativar janela flutuante");root.addView(overlay);overlay.setOnClickListener(v->startOverlay());
+
   root.addView(label("Os sinais são experimentais e podem falhar. Não existe garantia de rentabilidade. Nenhuma ordem real é enviada. Simulação sem tarifas ou impostos. Se faltarem dados, a análise fica indisponível.",12,Color.LTGRAY));
   picker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
    @Override public void onItemSelected(AdapterView<?> parent,View view,int pos,long id){quote=null;rate=Double.NaN;priceView.setText("Consultando...");signalView.setText("AGUARDAR");refresh();showPaper();}
