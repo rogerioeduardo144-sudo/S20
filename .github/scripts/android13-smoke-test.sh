@@ -33,7 +33,13 @@ for match in re.finditer(r'<node\b[^>]*>',screen):
 PY
 )
   if [ -n "$FOUND" ]; then break; fi
-  adb shell input swipe 530 1650 530 400 400
+  SIZE=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -n 1)
+  WIDTH=${SIZE%x*}
+  HEIGHT=${SIZE#*x}
+  X=$((WIDTH / 2))
+  YSTART=$((HEIGHT * 8 / 10))
+  YEND=$((HEIGHT * 2 / 10))
+  adb shell input swipe "$X" "$YSTART" "$X" "$YEND" 400
   sleep 1
 done
 if [ -z "$FOUND" ]; then
